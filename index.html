@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YoYo | Num-Gen Engine</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Orbitron:wght@400;900&family=Montserrat:wght@400;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #05070a; --panel: rgba(15, 23, 42, 0.8); --primary: #00f2ff; --text: #e2e8f0; 
+            --border: rgba(0, 242, 255, 0.3); --font: 'Cairo'; --radius: 20px; --grad: linear-gradient(135deg, #00f2ff, #006aff);
+        }
+        [data-theme="cyber"] { --bg: #000; --panel: rgba(20, 0, 40, 0.9); --primary: #bc13fe; --text: #fff; --border: 2px solid #bc13fe; --font: 'Orbitron'; --radius: 0px; --grad: linear-gradient(90deg, #bc13fe, #ff00de); box-shadow: 0 0 20px #bc13fe; }
+        [data-theme="gold"] { --bg: #0a0a0a; --panel: #1a1a1a; --primary: #d4af37; --text: #fdfdfd; --border: 1px solid #d4af37; --font: 'Cairo'; --radius: 12px; --grad: linear-gradient(135deg, #d4af37, #f7e08a); }
+        [data-theme="blood"] { --bg: #1a0000; --panel: #2d0000; --primary: #ff0000; --text: #ffcccc; --border: 1px solid #ff0000; --font: 'Cairo'; --radius: 30px; --grad: linear-gradient(0deg, #800000, #ff0000); }
+        [data-theme="tokyo"] { --bg: #1a1b26; --panel: #24283b; --primary: #7aa2f7; --text: #cfc9c2; --border: 1px solid #bb9af7; --font: 'Cairo'; --radius: 20px; --grad: linear-gradient(90deg, #7aa2f7, #bb9af7); }
+
+        * { margin:0; padding:0; box-sizing:border-box; transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1); }
+        body { background: var(--bg); color: var(--text); font-family: var(--font), sans-serif; padding: 20px; min-height: 100vh; overflow-x: hidden; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.15; background-image: radial-gradient(var(--primary) 1px, transparent 1px); background-size: 30px 30px; }
+
+        .app-shell { max-width: 1200px; margin: 0 auto; }
+
+        nav { display: flex; justify-content: space-between; align-items: center; background: var(--panel); padding: 20px; border-radius: var(--radius); border: var(--border); margin-bottom: 30px; backdrop-filter: blur(10px); }
+        .brand { font-size: 2.2rem; font-weight: 900; color: var(--primary); text-shadow: 0 0 15px var(--primary); font-family: 'Orbitron', sans-serif; cursor: pointer; }
+
+        .theme-strip { display: flex; gap: 8px; }
+        .t-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; }
+
+        .sidebar { position: fixed; left: -350px; top: 0; width: 350px; height: 100%; background: var(--panel); border-right: var(--border); z-index: 1000; padding: 30px; backdrop-filter: blur(25px); overflow-y: auto; }
+        .sidebar.open { left: 0; box-shadow: 20px 0 50px rgba(0,0,0,0.8); }
+        .history-title { color: var(--primary); font-weight: 900; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .search-box { width: 100%; padding: 12px; border-radius: 10px; border: var(--border); background: rgba(0,0,0,0.4); color: white; margin-bottom: 20px; outline: none; font-family: 'Cairo'; }
+        
+        .h-item { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 12px; cursor: pointer; border: 1px solid transparent; }
+        .h-item:hover { border-color: var(--primary); background: rgba(0, 242, 255, 0.05); transform: translateX(5px); }
+        .h-item .time { font-size: 0.7rem; opacity: 0.5; display: block; margin-top: 5px; }
+
+        .selector { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        .btn-l { padding: 10px 20px; border-radius: 50px; border: var(--border); background: var(--panel); color: var(--text); cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+        .btn-l.active { background: var(--grad); color: #000; box-shadow: 0 0 20px var(--primary); }
+
+        .hero-input { margin-bottom: 40px; position: relative; }
+        textarea { width: 100%; padding: 40px; border-radius: var(--radius); background: var(--panel); border: var(--border); color: var(--text); font-size: 2.2rem; font-family: var(--font); text-align: center; outline: none; box-shadow: 0 30px 60px rgba(0,0,0,0.5); resize: none; }
+        .char-pill { position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); background: var(--grad); color: #000; padding: 4px 18px; border-radius: 50px; font-weight: 900; font-size: 0.75rem; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
+        @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } textarea { font-size: 1.5rem; } }
+
+        .res-box { background: var(--panel); border: var(--border); border-radius: var(--radius); padding: 30px; display: none; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .res-box.show { display: flex; }
+        
+        .box-title { font-size: 0.75rem; letter-spacing: 2px; font-weight: 900; color: var(--primary); margin-bottom: 15px; opacity: 0.8; }
+        .main-text { font-size: 1.4rem; line-height: 1.6; font-weight: 700; min-height: 80px; word-break: break-word; }
+        .copy-btn { margin-top: 20px; width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--grad); color: #000; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        .copy-btn:hover { filter: brightness(1.2); letter-spacing: 2px; }
+
+        .clear-btn { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; }
+    </style>
+</head>
+<body data-theme="default">
+
+<div id="sideDrawer" class="sidebar">
+    <div class="history-title">
+        <span>HISTORY / السجل</span> 
+        <button class="clear-btn" onclick="clearHistory()">مسح</button>
+        <span onclick="toggleSide()" style="cursor:pointer">✕</span>
+    </div>
+    <input type="text" id="historySearch" class="search-box" placeholder="بحث في السجل..." oninput="renderHistory()">
+    <div id="h-list"></div>
+</div>
+
+<div class="app-shell">
+    <nav>
+        <div class="brand" onclick="toggleSide()">YoYo <span style="font-size: 0.9rem; opacity: 0.5;">HISTORY 🕓</span></div>
+        <div class="theme-strip">
+            <div class="t-dot" style="background:#00f2ff" onclick="setT('default')"></div>
+            <div class="t-dot" style="background:#bc13fe" onclick="setT('cyber')"></div>
+            <div class="t-dot" style="background:#d4af37" onclick="setT('gold')"></div>
+            <div class="t-dot" style="background:#ff0000" onclick="setT('blood')"></div>
+            <div class="t-dot" style="background:#7aa2f7" onclick="setT('tokyo')"></div>
+        </div>
+    </nav>
+
+    <div class="selector">
+        <div class="btn-l active" onclick="tgL('ar', this)">العربية</div>
+        <div class="btn-l" onclick="tgL('en', this)">English</div>
+        <div class="btn-l" onclick="tgL('es', this)">Español</div>
+        <div class="btn-l" onclick="tgL('de', this)">Deutsch</div>
+    </div>
+
+    <div class="hero-input">
+        <textarea id="mainInput" rows="2" placeholder="اكتب جملتك مع الرقم هنا.."></textarea>
+        <div class="char-pill"><span id="charCount">0</span> CHARACTERS</div>
+    </div>
+
+    <div class="grid-container">
+        <div id="c-ar" class="res-box show" dir="rtl">
+            <div class="box-title">ARABIC LEGAL ENGINE</div>
+            <div id="o-ar" class="main-text">...</div>
+            <button class="copy-btn" onclick="cp('o-ar')">نسخ</button>
+        </div>
+        <div id="c-en" class="res-box" dir="ltr">
+            <div class="box-title">ENGLISH LEGAL FORMAT</div>
+            <div id="o-en" class="main-text">...</div>
+            <button class="copy-btn" onclick="cp('o-en')">COPY</button>
+        </div>
+        <div id="c-es" class="res-box" dir="ltr">
+            <div class="box-title">ESPAÑOL TRADUCCIÓN</div>
+            <div id="o-es" class="main-text">...</div>
+            <button class="copy-btn" onclick="cp('o-es')">COPIAR</button>
+        </div>
+        <div id="c-de" class="res-box" dir="ltr">
+            <div class="box-title">DEUTSCHE ÜBERSETZUNG</div>
+            <div id="o-de" class="main-text">...</div>
+            <button class="copy-btn" onclick="cp('o-de')">KOPIEREN</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Engines ---
+    const AR_ENG = (n) => { if (n === 0) return "صفر"; const u = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة"]; const t = ["أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"]; const ts = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"]; const h = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"]; let r = ""; if (n >= 1000000) { let m = Math.floor(n/1000000); r += (m===1?"مليون":m===2?"مليونان":m<=10?AR_ENG(m)+" ملايين":AR_ENG(m)+" مليون") + " "; n %= 1000000; if (n>0) r += "و "; } if (n >= 1000) { let th = Math.floor(n/1000); r += (th===1?"ألف":th===2?"ألفان":th<=10?AR_ENG(th)+" آلاف":AR_ENG(th)+" ألف") + " "; n %= 1000; if (n>0) r += "و "; } if (n >= 100) { r += h[Math.floor(n/100)] + " "; n %= 100; if (n>0) r += "و "; } if (n >= 20) { if (n%10 > 0) r += u[n%10] + " و "; r += ts[Math.floor(n/10)]; } else if (n >= 11) { r += t[n-11]; } else if (n > 0) { r += u[n]; } return r.trim(); };
+    const EN_ENG = (n) => { const u = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen']; const t = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety']; const g = ['','Thousand','Million','Billion']; if (n === 0) return "Zero"; let r = "", i = 0; while (n > 0) { let c = n % 1000; if (c > 0) { let s = ""; if (c >= 100) { s += u[Math.floor(c/100)] + " Hundred "; c %= 100; } if (c >= 20) { s += t[Math.floor(c/10)]; if (c%10 > 0) s += "-" + u[c%10]; } else if (c > 0) s += u[c]; r = s + " " + g[i] + " " + r; } n = Math.floor(n/1000); i++; } return r.trim(); };
+    const ES_ENG = (n) => { const u = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve']; const t = ['', 'diez', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']; if (n === 0) return "cero"; if (n >= 1000) return (Math.floor(n/1000)===1 ? "mil" : ES_ENG(Math.floor(n/1000)) + " mil") + " " + ES_ENG(n%1000); if (n >= 100) return "ciento " + ES_ENG(n%100); if (n >= 20) return t[Math.floor(n/10)] + (n%10>0?" y "+u[n%10]:""); return u[n] || ""; };
+    const DE_ENG = (n) => { const u = ['', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun']; const t = ['', 'zehn', 'zwanzig', 'dreißig', 'vierzig', 'fünfzig', 'sechzig', 'sieبzig', 'achtzig', 'neunzig']; if (n === 0) return "null"; let r = ""; if (n >= 1000) { r += u[Math.floor(n/1000)] + "tausend"; n %= 1000; } if (n >= 100) { r += u[Math.floor(n/100)] + "hundert"; n %= 100; } if (n >= 20) { r += (n%10===0 ? "" : u[n%10] + "und") + t[Math.floor(n/10)]; } else if (n > 0) { r += u[n]; } return r; };
+
+    // --- Logic ---
+    let history = JSON.parse(localStorage.getItem('yoyo_history')) || [];
+    const inp = document.getElementById('mainInput');
+
+    window.onload = () => renderHistory();
+
+    inp.addEventListener('input', () => {
+        const val = inp.value;
+        document.getElementById('charCount').innerText = val.length;
+        const m = val.match(/\d+/);
+        if (m) {
+            const num = parseInt(m[0]);
+            document.getElementById('o-ar').innerText = val.replace(m[0], ` (${AR_ENG(num)}) فقط لا غير `);
+            document.getElementById('o-en').innerText = val.replace(m[0], ` (${EN_ENG(num)}) only `);
+            document.getElementById('o-es').innerText = val.replace(m[0], ` (${ES_ENG(num)}) solamente `);
+            document.getElementById('o-de').innerText = val.replace(m[0], ` (${DE_ENG(num)}) nur `);
+            
+            clearTimeout(window.hTimer);
+            window.hTimer = setTimeout(() => saveToHistory(val), 2000);
+        }
+    });
+
+    function saveToHistory(txt) {
+        if(!txt.trim() || (history.length > 0 && history[0].text === txt)) return;
+        history.unshift({ text: txt, time: new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) });
+        if(history.length > 30) history.pop();
+        localStorage.setItem('yoyo_history', JSON.stringify(history));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const s = document.getElementById('historySearch').value.toLowerCase();
+        const list = document.getElementById('h-list');
+        list.innerHTML = history.filter(h => h.text.toLowerCase().includes(s)).map(h => `
+            <div class="h-item" onclick="restore('${h.text.replace(/'/g, "\\'")}')">
+                <div>${h.text.substring(0,50)}...</div>
+                <span class="time">${h.time}</span>
+            </div>
+        `).join('');
+    }
+
+    function clearHistory() { history = []; localStorage.removeItem('yoyo_history'); renderHistory(); }
+    function restore(txt) { inp.value = txt; inp.dispatchEvent(new Event('input')); }
+    function toggleSide() { document.getElementById('sideDrawer').classList.toggle('open'); }
+    function setT(t) { document.body.setAttribute('data-theme', t); }
+    function tgL(id, btn) { btn.classList.toggle('active'); document.getElementById('c-' + id).classList.toggle('show'); }
+    function cp(id) {
+        navigator.clipboard.writeText(document.getElementById(id).innerText);
+        const b = event.target; b.innerText = "COPIED!"; setTimeout(() => b.innerText = "COPY/نسخ", 1000);
+    }
+</script>
+</body>
+</html>
